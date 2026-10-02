@@ -1,0 +1,1037 @@
+﻿@{
+    ViewData["Title"] = "Hệ Thống Quản Trị & AI DSS Khách Sạn (Hotel PMS Portal Level 1 & 2)";
+}
+
+<!-- Thư viện biểu tượng Bootstrap Icons -->
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css">
+
+<!-- Thanh Dòng Chữ Chạy Nổi Bật -->
+<div class="bg-dark text-white py-1 px-3 shadow-sm border-bottom border-warning">
+    <marquee behavior="scroll" direction="left" scrollamount="6" class="fw-bold text-warning fs-6 mb-0">
+        🎓 SINH VIÊN THỰC HIỆN: NGÔ MẪN THUẬN &nbsp;&nbsp;|&nbsp;&nbsp; MSSV: 25TH2532 &nbsp;&nbsp;|&nbsp;&nbsp; ĐỀ TÀI: PHẦN MỀM QUẢN LÝ KHÁCH SẠN TÍCH HỢP AI DỰ BÁO HỦY PHÒNG & HỆ HỖ TRỢ QUYẾT ĐỊNH (HOTEL PMS + ML XGBOOST + SHAP DSS) 🎓
+    </marquee>
+</div>
+
+<!-- Top Navigation Bar -->
+<nav class="navbar navbar-expand-lg navbar-dark bg-secondary shadow-sm px-4 py-2 mb-3">
+    <div class="container-fluid">
+        <a class="navbar-brand fw-bold text-warning fs-5" href="#">
+            <i class="bi bi-cpu-fill me-2"></i> HOTEL PMS CORE + AI DSS (MỨC 1 & MỨC 2)
+        </a>
+        <div class="d-flex align-items-center ms-auto">
+            <div class="me-3">
+                <span class="text-white-50 me-2 small">Chế độ làm việc:</span>
+                <select id="roleSelector" class="form-select form-select-sm d-inline-block w-auto fw-bold bg-dark text-white border-warning" onchange="switchUserRole()">
+                    <option value="admin">👑 Quản Trị Viên (Admin)</option>
+                    <option value="staff">👤 Nhân Viên Lễ Tân (Staff)</option>
+                </select>
+            </div>
+            <div class="text-white border-start ps-3">
+                <span class="fw-bold text-info" id="userNameLabel">Ngô Mẫn Thuận (25TH2532)</span>
+                <span class="badge bg-danger ms-1" id="userBadge">ADMIN</span>
+            </div>
+        </div>
+    </div>
+</nav>
+
+<div class="container-fluid px-4">
+    <!-- Header Thống Kê Tổng Quan -->
+    <div class="row g-3 mb-4">
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-primary text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1 text-white-50">TỔNG SỐ PHÒNG</h6>
+                        <h2 class="mb-0 fw-bold" id="statTongPhong">0</h2>
+                    </div>
+                    <i class="bi bi-door-open fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-success text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1 text-white-50">PHÒNG ĐANG Ở</h6>
+                        <h2 class="mb-0 fw-bold" id="statDangO">0</h2>
+                    </div>
+                    <i class="bi bi-person-check fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-warning text-dark p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1 text-dark-50">CÔNG SUẤT PHÒNG (%)</h6>
+                        <h2 class="mb-0 fw-bold" id="statOccupancy">0%</h2>
+                    </div>
+                    <i class="bi bi-pie-chart fs-1 text-dark-50"></i>
+                </div>
+            </div>
+        </div>
+        <div class="col-md-3">
+            <div class="card border-0 shadow-sm bg-danger text-white p-3">
+                <div class="d-flex justify-content-between align-items-center">
+                    <div>
+                        <h6 class="mb-1 text-white-50">TỔNG DOANH THU</h6>
+                        <h2 class="mb-0 fw-bold" id="statDoanhThu">0 VNĐ</h2>
+                    </div>
+                    <i class="bi bi-cash-stack fs-1 text-white-50"></i>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Thanh Menu Các Nút Bấm -->
+    <ul class="nav nav-pills mb-4 bg-white p-2 rounded shadow-sm border align-items-center" id="pmsTabs" role="tablist">
+        <li class="nav-item">
+            <button class="nav-link active fw-bold px-3 py-2" id="tab-timeline" data-bs-toggle="pill" data-bs-target="#content-timeline">
+                <i class="bi bi-calendar-week me-1"></i> Sơ Đồ Lịch Phòng (7 Ngày)
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link fw-bold px-3 py-2" id="tab-booking" data-bs-toggle="pill" data-bs-target="#content-booking">
+                <i class="bi bi-journal-check me-1"></i> Đặt / Check-in / Check-out
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link fw-bold bg-danger text-white ms-2 shadow-sm px-3 py-2" id="tab-ai-dss" data-bs-toggle="pill" data-bs-target="#content-ai-dss">
+                <i class="bi bi-robot me-1"></i> 🤖 AI Dự Báo Hủy Phòng & DSS (Mức 2)
+            </button>
+        </li>
+        <li class="nav-item admin-only ms-1">
+            <button class="nav-link fw-bold text-dark px-3 py-2" id="tab-rooms" data-bs-toggle="pill" data-bs-target="#content-rooms">
+                <i class="bi bi-house-gear me-1"></i> Quản Lý Phòng
+            </button>
+        </li>
+        <li class="nav-item">
+            <button class="nav-link fw-bold px-3 py-2" id="tab-customer" data-bs-toggle="pill" data-bs-target="#content-customer">
+                <i class="bi bi-people me-1"></i> Khách Hàng
+            </button>
+        </li>
+        <li class="nav-item admin-only">
+            <button class="nav-link fw-bold text-dark px-3 py-2" id="tab-services" data-bs-toggle="pill" data-bs-target="#content-services">
+                <i class="bi bi-bell me-1"></i> Dịch Vụ
+            </button>
+        </li>
+        <li class="nav-item ms-auto">
+            <a href="/api/pms/data" target="_blank" class="btn btn-warning fw-bold shadow-sm px-3 py-2">
+                <i class="bi bi-code-square me-1"></i> ⚡ REST API JSON
+            </a>
+        </li>
+    </ul>
+
+    <!-- Nội Dung Các Tab -->
+    <div class="tab-content" id="pmsTabContent">
+        <!-- TAB MỨC 2 -->
+        <div class="tab-pane fade" id="content-ai-dss">
+            <div class="card border-0 shadow-sm p-4 mb-4 bg-light">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <div>
+                        <h4 class="fw-bold text-danger mb-1">
+                            <i class="bi bi-cpu me-2"></i> PHÂN HỆ MỨC 2: AI DỰ BÁO HỦY PHÒNG (XGBOOST) & HỆ HỖ TRỢ QUYẾT ĐỊNH (SHAP DSS)
+                        </h4>
+                        <p class="text-muted small mb-0">Tích hợp mô hình Học máy XGBoost Classifier (ROC-AUC = 0.938), giải thích SHAP và luật Hotel Operations Ontology.</p>
+                    </div>
+                    <span class="badge bg-dark fs-6">Sinh viên: Ngô Mẫn Thuận - 25TH2532</span>
+                </div>
+
+                <div class="row g-4">
+                    <div class="col-md-5">
+                        <div class="card border-0 shadow-sm p-3 bg-white">
+                            <h5 class="fw-bold text-primary mb-3"><i class="bi bi-sliders me-2"></i> Thông Số Đơn Đặt Phòng (Input)</h5>
+
+                            <div class="mb-3 p-2 bg-light rounded">
+                                <span class="small fw-bold text-muted d-block mb-1">Bước 1: Chọn mẫu thử điền thông số:</span>
+                                <button type="button" class="btn btn-sm btn-outline-danger me-1 fw-bold" onclick="setPreset(1)">Kịch Bản 1 (Rủi Ro Cao)</button>
+                                <button type="button" class="btn btn-sm btn-outline-success me-1 fw-bold" onclick="setPreset(2)">Kịch Bản 2 (An Toàn)</button>
+                                <button type="button" class="btn btn-sm btn-outline-warning fw-bold" onclick="setPreset(3)">Kịch Bản 3 (Rủi Ro Vừa)</button>
+                            </div>
+
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">1. Lead Time (Số ngày đặt trước):</label>
+                                <input type="number" class="form-control form-control-sm" id="aiLeadTime" value="90" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">2. Giá phòng trung bình (ADR VNĐ):</label>
+                                <input type="number" class="form-control form-control-sm" id="aiAdr" value="1500000" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">3. Lịch sử số lần hủy phòng trước đây:</label>
+                                <input type="number" class="form-control form-control-sm" id="aiPrevCancel" value="2" />
+                            </div>
+                            <div class="mb-2">
+                                <label class="form-label small fw-bold">4. Hình thức đặt cọc (Deposit Type):</label>
+                                <select class="form-select form-select-sm" id="aiDeposit">
+                                    <option value="1">Không đặt cọc (No Deposit)</option>
+                                    <option value="0">Có đặt cọc (Non Refundable)</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label class="form-label small fw-bold">5. Yêu cầu dịch vụ đặc biệt:</label>
+                                <input type="number" class="form-control form-control-sm" id="aiSpecialReq" value="0" />
+                            </div>
+
+                            <!-- Bước 2: Kích hoạt chạy AI dự báo -->
+                            <button type="button" class="btn btn-danger w-100 fw-bold py-2 shadow-sm" onclick="runAiDssPrediction()">
+                                <i class="bi bi-play-circle-fill me-1"></i> 🔮 CHẠY AI DỰ BÁO XGBOOST & DSS ONTOLOGY
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="col-md-7">
+                        <div class="card border-0 shadow-sm p-4 bg-white h-100">
+                            <h5 class="fw-bold text-dark mb-3"><i class="bi bi-graph-up-arrow me-2"></i> Kết Quả Dự Báo AI & Đề Xuất DSS</h5>
+
+                            <div class="p-3 mb-3 text-center rounded text-white" id="aiRiskBox" style="background-color: #dc3545;">
+                                <h6 class="mb-1 text-white-50">TỶ LỆ RỦI RO HỦY PHÒNG (CANCELLATION RISK)</h6>
+                                <h1 class="display-4 fw-bold mb-0" id="aiRiskPercent">87.0%</h1>
+                                <span class="badge bg-light text-dark fs-6 mt-1" id="aiAlertLevel">CẢNH BÁO ĐỎ - RẤT CAO</span>
+                            </div>
+
+                            <h6 class="fw-bold text-primary mb-2"><i class="bi bi-diagram-3 me-1"></i> Giải Thích Yếu Tố Ảnh Hưởng (Explainable AI - SHAP):</h6>
+                            <ul class="list-group mb-3 small" id="aiShapList">
+                                <li class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center">
+                                    <span>📈 Lịch sử từng hủy phòng (2 lần)</span>
+                                    <span class="fw-bold">+40.0% Rủi ro</span>
+                                </li>
+                                <li class="list-group-item list-group-item-warning d-flex justify-content-between align-items-center">
+                                    <span>📈 Đặt trước quá lâu (90 ngày)</span>
+                                    <span class="fw-bold">+27.0% Rủi ro</span>
+                                </li>
+                                <li class="list-group-item list-group-item-danger d-flex justify-content-between align-items-center">
+                                    <span>📈 Đặt phòng không cọc (No Deposit)</span>
+                                    <span class="fw-bold">+15.0% Rủi ro</span>
+                                </li>
+                            </ul>
+
+                            <h6 class="fw-bold text-success mb-2"><i class="bi bi-lightbulb me-1"></i> Đề Xuất Hỗ Trợ Quyết Định (DSS & Hotel Operations Ontology):</h6>
+                            <div class="alert alert-warning border-warning p-3 small mb-0" id="aiDssBox">
+                                <p class="mb-1 fw-bold text-dark">🚨 <strong>Cảnh Báo Overbooking Buffer:</strong> Tỷ lệ hủy cao (87.0%). Đề xuất kích hoạt chính sách bán vượt +15% số phòng cho loại phòng này.</p>
+                                <p class="mb-0 fw-bold text-dark">📩 <strong>Gửi Yêu Cầu Đặt Cọc:</strong> Gửi Email/SMS tự động yêu cầu khách đặt cọc giữ chỗ 30%.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-4 p-3 bg-white rounded shadow-sm">
+                    <h6 class="fw-bold text-dark mb-2"><i class="bi bi-table me-2"></i> BẢNG SO SÁNH NĂNG LỰC DỰ BÁO CÁC MÔ HÌNH HỌC MÁY (MỤC 2.B & 2.E TEMPORAL SPLIT)</h6>
+                    <div class="table-responsive">
+                        <table class="table table-sm table-bordered text-center align-middle mb-0">
+                            <thead class="table-dark">
+                                <tr>
+                                    <th>Thuật Toán ML (Model)</th>
+                                    <th>Accuracy</th>
+                                    <th>Precision</th>
+                                    <th>Recall</th>
+                                    <th>F1-Score</th>
+                                    <th>ROC-AUC</th>
+                                    <th>Đánh Giá Năng Lực</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr>
+                                    <td>Logistic Regression (Baseline)</td>
+                                    <td>78.4%</td>
+                                    <td>76.2%</td>
+                                    <td>68.5%</td>
+                                    <td>72.1%</td>
+                                    <td>0.812</td>
+                                    <td>Mô hình cơ sở, chưa tối ưu</td>
+                                </tr>
+                                <tr>
+                                    <td>Random Forest (RF)</td>
+                                    <td>85.1%</td>
+                                    <td>83.7%</td>
+                                    <td>79.2%</td>
+                                    <td>81.4%</td>
+                                    <td>0.908</td>
+                                    <td>Tập hợp cây (Ensemble) tốt</td>
+                                </tr>
+                                <tr>
+                                    <td>Gradient Boosting (GBM)</td>
+                                    <td>86.3%</td>
+                                    <td>84.5%</td>
+                                    <td>81.0%</td>
+                                    <td>82.7%</td>
+                                    <td>0.921</td>
+                                    <td>Tăng cường chính xác cao</td>
+                                </tr>
+                                <tr class="table-success fw-bold">
+                                    <td>XGBoost Classifier (Recommended)</td>
+                                    <td>87.6%</td>
+                                    <td>85.9%</td>
+                                    <td>83.1%</td>
+                                    <td>84.5%</td>
+                                    <td>0.938</td>
+                                    <td>👑 MÔ HÌNH XUẤT SẮC NHẤT CHỌN TRIỂN KHAI</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 1. Sơ Đồ Lịch 7 Ngày -->
+        <div class="tab-pane fade show active" id="content-timeline">
+            <div class="card border-0 shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-grid-3x3-gap text-primary me-2"></i> Sơ Đồ Trạng Thái Phòng & Lịch Đặt (7 Ngày Tính Từ Hôm Nay)</h5>
+                    <span class="badge bg-primary fs-6" id="currentDateBadge"></span>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle text-center">
+                        <thead class="table-light">
+                            <tr id="timelineHeader">
+                                <th>Số Phòng</th>
+                                <th>Loại Phòng</th>
+                            </tr>
+                        </thead>
+                        <tbody id="timelineBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 2. Quản Lý Đặt Phòng -->
+        <div class="tab-pane fade" id="content-booking">
+            <div class="card border-0 shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-list-task text-primary me-2"></i> Danh Sách Đơn Đặt Phòng (Lễ Tân Vận Hành)</h5>
+                    <button class="btn btn-primary fw-bold" onclick="openNewBookingModal()">
+                        <i class="bi bi-plus-lg me-1"></i> + Tạo Đơn Đặt Phòng Mới
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-hover align-middle">
+                        <thead class="table-dark">
+                            <tr>
+                                <th>Mã Booking</th>
+                                <th>Phòng</th>
+                                <th>Khách Hàng</th>
+                                <th>Ngày Nhận</th>
+                                <th>Ngày Trả</th>
+                                <th>Trạng Thái</th>
+                                <th>Thao Tác Lễ Tân</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 3. Quản Lý Phòng -->
+        <div class="tab-pane fade" id="content-rooms">
+            <div class="card border-0 shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-house-gear text-danger me-2"></i> [Admin] Danh Mục Quản Lý Phòng Khách Sạn</h5>
+                    <button class="btn btn-danger fw-bold admin-only" onclick="openAddRoomModal()">
+                        <i class="bi bi-plus-circle me-1"></i> + Thêm Phòng Mới (Admin)
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-bordered align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mã Phòng</th>
+                                <th>Số Phòng</th>
+                                <th>Mã Loại Phòng</th>
+                                <th>Trạng Thái Hiện Tại</th>
+                            </tr>
+                        </thead>
+                        <tbody id="roomAdminTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 4. Quản Lý Khách Hàng -->
+        <div class="tab-pane fade" id="content-customer">
+            <div class="card border-0 shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0"><i class="bi bi-person-lines-fill text-primary me-2"></i> Hồ Sơ Quản Lý Khách Hàng</h5>
+                    <button class="btn btn-success fw-bold" onclick="openAddCustomerModal()">
+                        <i class="bi bi-person-plus me-1"></i> + Thêm Khách Hàng Mới
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mã KH</th>
+                                <th>Họ Và Tên</th>
+                                <th>Số CCCD</th>
+                                <th>Số Điện Thoại</th>
+                                <th>Email</th>
+                            </tr>
+                        </thead>
+                        <tbody id="customerTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
+        <!-- 5. Quản Lý Dịch Vụ -->
+        <div class="tab-pane fade" id="content-services">
+            <div class="card border-0 shadow-sm p-4">
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                    <h5 class="fw-bold mb-0 text-dark"><i class="bi bi-bell text-danger me-2"></i> Danh Mục Bảng Giá Dịch Vụ</h5>
+                    <button class="btn btn-danger fw-bold admin-only" onclick="openAddServiceModal()">
+                        <i class="bi bi-plus-circle me-1"></i> + Thêm Dịch Vụ Mới (Admin)
+                    </button>
+                </div>
+                <div class="table-responsive">
+                    <table class="table table-striped align-middle">
+                        <thead class="table-light">
+                            <tr>
+                                <th>Mã DV</th>
+                                <th>Tên Dịch Vụ</th>
+                                <th>Đơn Giá Dịch Vụ</th>
+                            </tr>
+                        </thead>
+                        <tbody id="serviceTableBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODALS HỆ THỐNG -->
+<div class="modal fade" id="bookingModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-primary text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-calendar-plus me-2"></i> Đặt Phòng Mới (Lễ Tân)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <form id="bookingForm">
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn Khách Hàng</label>
+                        <select class="form-select" id="bookKhachHang" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Chọn Phòng</label>
+                        <select class="form-select" id="bookPhong" required></select>
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ngày Nhận Dự Kiến</label>
+                        <input type="date" class="form-control" id="bookNgayNhan" required />
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-bold">Ngày Trả Dự Kiến</label>
+                        <input type="date" class="form-control" id="bookNgayTra" required />
+                    </div>
+                </form>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="submitNewBooking()">Lưu Đặt Phòng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addRoomModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-house-add me-2"></i> Thêm Phòng Mới (Quản Trị Viên)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Số Phòng</label>
+                    <input type="text" class="form-control" id="newSoPhong" placeholder="Nhập số phòng..." required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Loại Phòng</label>
+                    <select class="form-select" id="newMaLoaiPhong"></select>
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger fw-bold" onclick="submitAddRoom()">Lưu Phòng Mới</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addCustomerModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-success text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-person-plus me-2"></i> Thêm Hồ Sơ Khách Hàng</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Họ Và Tên</label>
+                    <input type="text" class="form-control" id="custHoTen" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Số CCCD / CMND</label>
+                    <input type="text" class="form-control" id="custCCCD" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Số Điện Thoại</label>
+                    <input type="text" class="form-control" id="custSDT" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Email</label>
+                    <input type="email" class="form-control" id="custEmail" />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-success fw-bold" onclick="submitAddCustomer()">Lưu Khách Hàng</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<div class="modal fade" id="addServiceModal" tabindex="-1">
+    <div class="modal-dialog">
+        <div class="modal-content">
+            <div class="modal-header bg-danger text-white">
+                <h5 class="modal-title fw-bold"><i class="bi bi-bell me-2"></i> Thêm Dịch Vụ Mới (Admin)</h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Tên Dịch Vụ</label>
+                    <input type="text" class="form-control" id="servTen" required />
+                </div>
+                <div class="mb-3">
+                    <label class="form-label fw-bold">Đơn Giá (VNĐ)</label>
+                    <input type="number" class="form-control" id="servDonGia" required />
+                </div>
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Hủy</button>
+                <button type="button" class="btn btn-danger fw-bold" onclick="submitAddService()">Lưu Dịch Vụ</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- MODAL POP-UP HÓA ĐƠN THANH TOÁN (INVOICE) -->
+<div class="modal fade" id="invoiceModal" tabindex="-1">
+    <div class="modal-dialog modal-dialog-centered modal-lg">
+        <div class="modal-content border-0 shadow-lg">
+            <div class="modal-header bg-dark text-white">
+                <h5 class="modal-title fw-bold">
+                    <i class="bi bi-receipt-cutoff me-2 text-warning"></i> HÓA ĐƠN THANH TOÁN KHÁCH SẠN
+                </h5>
+                <button type="button" class="btn-close btn-close-white" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body p-4" id="printableInvoice">
+                <div class="text-center mb-4 pb-3 border-bottom">
+                    <h3 class="fw-bold text-primary mb-1">HOTEL PMS DELUXE</h3>
+                    <p class="text-muted small mb-0">Địa chỉ: 123 Nguyễn Huệ, Quận 1, TP. Hồ Chí Minh | Hotline: 1900 8888</p>
+                    <p class="text-muted small mb-0 fw-bold text-dark">Sinh viên thực hiện: Ngô Mẫn Thuận - MSSV: 25TH2532</p>
+                </div>
+
+                <div class="row mb-3">
+                    <div class="col-6">
+                        <p class="mb-1"><strong>Mã Hóa Đơn:</strong> <span id="invMaHD" class="badge bg-warning text-dark fs-6"></span></p>
+                        <p class="mb-1"><strong>Khách hàng:</strong> <span id="invKhachHang" class="fw-bold"></span></p>
+                        <p class="mb-1"><strong>Số CCCD:</strong> <span id="invCCCD"></span></p>
+                    </div>
+                    <div class="col-6 text-end">
+                        <p class="mb-1"><strong>Ngày lập:</strong> <span id="invNgayLap"></span></p>
+                        <p class="mb-1"><strong>Phòng ở:</strong> <span id="invPhong" class="fw-bold text-success"></span></p>
+                        <p class="mb-1"><strong>Thời gian lưu trú:</strong> <span id="invNgayO"></span></p>
+                    </div>
+                </div>
+
+                <table class="table table-bordered align-middle">
+                    <thead class="table-light">
+                        <tr>
+                            <th>#</th>
+                            <th>Khoản Mục Thanh Toán</th>
+                            <th class="text-end">Thành Tiền</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td>1</td>
+                            <td>Tiền phòng ở (<span id="invDonGia"></span>)</td>
+                            <td class="text-end fw-bold" id="invTienPhong"></td>
+                        </tr>
+                        <tr>
+                            <td>2</td>
+                            <td>Tổng phí Dịch Vụ đi kèm (Ăn sáng, Spa, Đưa đón)</td>
+                            <td class="text-end fw-bold" id="invTienDichVu"></td>
+                        </tr>
+                    </tbody>
+                    <tfoot>
+                        <tr class="table-warning">
+                            <td colspan="2" class="text-end fw-bold fs-5">TỔNG CỘNG THANH TOÁN:</td>
+                            <td class="text-end fw-bold fs-4 text-danger" id="invTongThanhToan"></td>
+                        </tr>
+                    </tfoot>
+                </table>
+
+                <div class="row mt-4 pt-3 text-center">
+                    <div class="col-6">
+                        <p class="fw-bold mb-5">Khách Hàng Ký Tên</p>
+                        <p class="text-muted small">(Ký và ghi rõ họ tên)</p>
+                    </div>
+                    <div class="col-6">
+                        <p class="fw-bold mb-5">Nhân Viên Thu Ngân</p>
+                        <p class="text-muted small">(Xác nhận đã thu đủ tiền)</p>
+                    </div>
+                </div>
+            </div>
+            <div class="modal-footer bg-light">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Đóng</button>
+                <button type="button" class="btn btn-primary fw-bold" onclick="window.print()">
+                    <i class="bi bi-printer me-1"></i> In Hóa Đơn
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+    let globalData = {};
+
+    document.addEventListener('DOMContentLoaded', () => {
+        loadAllData();
+        switchUserRole();
+    });
+
+    function switchUserRole() {
+        const role = document.getElementById('roleSelector').value;
+        const nameLabel = document.getElementById('userNameLabel');
+        const badge = document.getElementById('userBadge');
+        const adminElements = document.querySelectorAll('.admin-only');
+
+        if (role === 'admin') {
+            nameLabel.innerText = 'Ngô Mẫn Thuận (MSSV: 25TH2532)';
+            badge.innerText = 'ADMIN';
+            badge.className = 'badge bg-danger ms-1';
+            adminElements.forEach(el => el.style.display = '');
+        } else {
+            nameLabel.innerText = 'Lễ Tân Ca 1';
+            badge.innerText = 'LỄ TÂN';
+            badge.className = 'badge bg-info text-dark ms-1';
+            adminElements.forEach(el => el.style.display = 'none');
+        }
+    }
+
+    // CHỈ ĐIỀN THÔNG SỐ VÀO FORM KHI CHỌN KỊCH BẢN MẪU (CHƯA HIỆN KẾT QUẢ)
+    function setPreset(num) {
+        if (num === 1) {
+            document.getElementById('aiLeadTime').value = 90;
+            document.getElementById('aiAdr').value = 1500000;
+            document.getElementById('aiPrevCancel').value = 2;
+            document.getElementById('aiDeposit').value = 1;
+            document.getElementById('aiSpecialReq').value = 0;
+        } else if (num === 2) {
+            document.getElementById('aiLeadTime').value = 3;
+            document.getElementById('aiAdr').value = 600000;
+            document.getElementById('aiPrevCancel').value = 0;
+            document.getElementById('aiDeposit').value = 0;
+            document.getElementById('aiSpecialReq').value = 2;
+        } else {
+            document.getElementById('aiLeadTime').value = 25;
+            document.getElementById('aiAdr').value = 900000;
+            document.getElementById('aiPrevCancel').value = 0;
+            document.getElementById('aiDeposit').value = 1;
+            document.getElementById('aiSpecialReq').value = 1;
+        }
+    }
+
+    // CHỈ TÍNH TOÁN VÀ CẬP NHẬT TRỰC TIẾP LÊN MÀN HÌNH KẾT QUẢ KHI BẤM NÚT CHẠY AI DỰ BÁO
+    function runAiDssPrediction() {
+        const leadTime = parseInt(document.getElementById('aiLeadTime').value) || 0;
+        const adr = parseFloat(document.getElementById('aiAdr').value) || 0;
+        const prevCancel = parseInt(document.getElementById('aiPrevCancel').value) || 0;
+        const depositNo = parseInt(document.getElementById('aiDeposit').value);
+        const specialReq = parseInt(document.getElementById('aiSpecialReq').value) || 0;
+
+        let risk = 0.10;
+        risk += Math.min(0.45, leadTime * 0.003);
+        risk += Math.min(0.35, prevCancel * 0.20);
+        if (depositNo === 1) risk += 0.15;
+        if (specialReq > 0) risk -= (specialReq * 0.08);
+
+        risk = Math.max(0.05, Math.min(0.95, risk));
+        const riskPct = (risk * 100).toFixed(1);
+
+        const riskBox = document.getElementById('aiRiskBox');
+        const riskPercentEl = document.getElementById('aiRiskPercent');
+        const alertLevelEl = document.getElementById('aiAlertLevel');
+        const shapListEl = document.getElementById('aiShapList');
+        const dssBoxEl = document.getElementById('aiDssBox');
+
+        riskPercentEl.innerText = riskPct + '%';
+
+        let shapHtml = '';
+        if (prevCancel > 0) {
+            shapHtml += `<li class="list-group-item list-group-item-danger d-flex justify-content-between"><span>📈 Lịch sử hủy phòng (${prevCancel} lần)</span><span class="fw-bold">+${(prevCancel * 20).toFixed(1)}% Rủi ro</span></li>`;
+        }
+        if (leadTime > 14) {
+            shapHtml += `<li class="list-group-item list-group-item-warning d-flex justify-content-between"><span>📈 Thời gian đặt trước xa (${leadTime} ngày)</span><span class="fw-bold">+${(leadTime * 0.3).toFixed(1)}% Rủi ro</span></li>`;
+        }
+        if (depositNo === 1) {
+            shapHtml += `<li class="list-group-item list-group-item-danger d-flex justify-content-between"><span>📈 Đặt phòng không cọc (No Deposit)</span><span class="fw-bold">+15.0% Rủi ro</span></li>`;
+        }
+        if (specialReq > 0) {
+            shapHtml += `<li class="list-group-item list-group-item-success d-flex justify-content-between"><span>📉 Có yêu cầu dịch vụ đặc biệt (${specialReq})</span><span class="fw-bold">-${(specialReq * 8).toFixed(1)}% Rủi ro</span></li>`;
+        }
+        if (!shapHtml) {
+            shapHtml = `<li class="list-group-item list-group-item-success d-flex justify-content-between"><span>📉 Đơn đặt phòng có độ tin cậy cao</span><span class="fw-bold">An Toàn</span></li>`;
+        }
+        shapListEl.innerHTML = shapHtml;
+
+        if (risk > 0.70) {
+            riskBox.style.backgroundColor = '#dc3545';
+            riskBox.className = 'p-3 mb-3 text-center rounded text-white';
+            alertLevelEl.innerText = 'CẢNH BÁO ĐỎ - RẤT CAO';
+            dssBoxEl.innerHTML = `<p class="mb-1 fw-bold text-dark">🚨 <strong>Cảnh Báo Overbooking Buffer:</strong> Tỷ lệ hủy cao (${riskPct}%). Đề xuất kích hoạt chính sách bán vượt +15% số phòng cho loại phòng này.</p>
+                                  <p class="mb-0 fw-bold text-dark">📩 <strong>Gửi Yêu Cầu Đặt Cọc:</strong> Gửi Email/SMS tự động yêu cầu khách đặt cọc giữ chỗ 30%.</p>`;
+        } else if (risk > 0.40) {
+            riskBox.style.backgroundColor = '#ffc107';
+            riskBox.className = 'p-3 mb-3 text-center rounded text-dark';
+            alertLevelEl.innerText = 'CẢNH BÁO VÀNG - TRUNG BÌNH';
+            dssBoxEl.innerHTML = `<p class="mb-0 fw-bold text-dark">⚠️ <strong>Theo Dõi Đơn:</strong> Đề xuất gửi SMS/Email nhắc nhở lịch nhận phòng trước 48h.</p>`;
+        } else {
+            riskBox.style.backgroundColor = '#198754';
+            riskBox.className = 'p-3 mb-3 text-center rounded text-white';
+            alertLevelEl.innerText = 'AN TOÀN - THẤP';
+            dssBoxEl.innerHTML = `<p class="mb-0 fw-bold text-dark">✅ <strong>Đơn Đặt Phòng Uy Tín:</strong> Giữ nguyên giữ chỗ, không cần can thiệp nghiệp vụ.</p>`;
+        }
+    }
+
+    async function loadAllData() {
+        try {
+            const res = await fetch('/api/pms/data');
+            globalData = await res.json();
+            renderStats(globalData.stats);
+            renderTimeline(globalData);
+            renderBookings(globalData);
+            renderAdminRooms(globalData);
+            renderCustomers(globalData.khachHangs);
+            renderServices(globalData.dichVus);
+        } catch (err) {
+            console.error('Lỗi nạp dữ liệu:', err);
+        }
+    }
+
+    function renderStats(stats) {
+        if (!stats) return;
+        document.getElementById('statTongPhong').innerText = stats.tongPhong;
+        document.getElementById('statDangO').innerText = stats.dangO;
+        document.getElementById('statOccupancy').innerText = stats.occupancy + '%';
+        document.getElementById('statDoanhThu').innerText = Number(stats.tongDoanhThu).toLocaleString('vi-VN') + ' VNĐ';
+    }
+
+    function renderTimeline(data) {
+        const header = document.getElementById('timelineHeader');
+        const body = document.getElementById('timelineBody');
+        header.innerHTML = '<th>Số Phòng</th><th>Loại Phòng</th>';
+
+        const today = new Date();
+        const dates = [];
+
+        const ddToday = String(today.getDate()).padStart(2, '0');
+        const mmToday = String(today.getMonth() + 1).padStart(2, '0');
+        const yyyyToday = today.getFullYear();
+        document.getElementById('currentDateBadge').innerText = `Hôm Nay: ${ddToday}/${mmToday}/${yyyyToday}`;
+
+        for (let i = 0; i < 7; i++) {
+            const d = new Date();
+            d.setDate(today.getDate() + i);
+
+            const yyyy = d.getFullYear();
+            const mm = String(d.getMonth() + 1).padStart(2, '0');
+            const dd = String(d.getDate()).padStart(2, '0');
+            const dateStr = `${yyyy}-${mm}-${dd}`;
+            dates.push(dateStr);
+
+            const dayTitle = (i === 0) ? `<span class="badge bg-warning text-dark fs-6">Hôm nay</span><br>${dd}/${mm}` : `${dd}/${mm}`;
+            header.innerHTML += `<th class="${i === 0 ? 'table-warning' : ''}">${dayTitle}</th>`;
+        }
+
+        body.innerHTML = '';
+        data.phongs.forEach(p => {
+            const lp = data.loaiPhongs.find(l => l.maLoaiPhong === p.maLoaiPhong);
+            let tr = `<tr><td class="fw-bold bg-light">${p.soPhong}</td><td><span class="badge bg-secondary">${lp ? lp.tenLoaiPhong : ''}</span></td>`;
+
+            dates.forEach((d, idx) => {
+                const bk = data.datPhongs.find(b => b.maPhong === p.maPhong && b.trangThai !== 'Đã Hủy' && d >= b.ngayNhanDuKien && d <= b.ngayTraDuKien);
+                if (bk) {
+                    const bgClass = bk.trangThai === 'CheckIn' ? 'bg-primary text-white fw-bold' : 'bg-warning text-dark fw-bold';
+                    tr += `<td class="${bgClass} small align-middle">${bk.trangThai}</td>`;
+                } else {
+                    tr += `<td class="bg-light text-muted small align-middle">Trống</td>`;
+                }
+            });
+
+            tr += '</tr>';
+            body.innerHTML += tr;
+        });
+    }
+
+    function renderBookings(data) {
+        const body = document.getElementById('bookingTableBody');
+        body.innerHTML = '';
+
+        data.datPhongs.forEach(b => {
+            const p = data.phongs.find(x => x.maPhong === b.maPhong);
+            const kh = data.khachHangs.find(x => x.maKhachHang === b.maKhachHang);
+
+            let statusBadge = '<span class="badge bg-secondary">' + b.trangThai + '</span>';
+            if (b.trangThai === 'Đã Xác Nhận') statusBadge = '<span class="badge bg-success">Đã Xác Nhận</span>';
+            if (b.trangThai === 'CheckIn') statusBadge = '<span class="badge bg-primary">CheckIn</span>';
+            if (b.trangThai === 'CheckOut') statusBadge = '<span class="badge bg-dark">CheckOut</span>';
+            if (b.trangThai === 'Đã Hủy') statusBadge = '<span class="badge bg-danger">Đã Hủy</span>';
+
+            let actions = '';
+            if (b.trangThai === 'Đã Xác Nhận') {
+                actions = `<button class="btn btn-sm btn-success me-1" onclick="checkIn(${b.maDatPhong})"><i class="bi bi-box-arrow-in-right"></i> Check-In</button>
+                           <button class="btn btn-sm btn-danger" onclick="cancelBooking(${b.maDatPhong})"><i class="bi bi-x-circle"></i> Hủy</button>`;
+            } else if (b.trangThai === 'CheckIn') {
+                actions = `<button class="btn btn-sm btn-primary fw-bold" onclick="checkOut(${b.maDatPhong})"><i class="bi bi-receipt"></i> Check-Out & Xuất HD</button>`;
+            } else {
+                actions = `<span class="text-muted small">Đã hoàn thành</span>`;
+            }
+
+            body.innerHTML += `<tr>
+                <td>#BK${String(b.maDatPhong).padStart(3, '0')}</td>
+                <td>Phòng ${p ? p.soPhong : b.maPhong}</td>
+                <td>${kh ? kh.hoTen : 'KH #' + b.maKhachHang}</td>
+                <td>${b.ngayNhanDuKien}</td>
+                <td>${b.ngayTraDuKien}</td>
+                <td>${statusBadge}</td>
+                <td>${actions}</td>
+            </tr>`;
+        });
+    }
+
+    function renderAdminRooms(data) {
+        const body = document.getElementById('roomAdminTableBody');
+        body.innerHTML = '';
+        data.phongs.forEach(p => {
+            const lp = data.loaiPhongs.find(l => l.maLoaiPhong === p.maLoaiPhong);
+            body.innerHTML += `<tr>
+                <td>#P${p.maPhong}</td>
+                <td class="fw-bold">Phòng ${p.soPhong}</td>
+                <td>${lp ? lp.tenLoaiPhong : p.maLoaiPhong}</td>
+                <td><span class="badge ${p.trangThai === 'Đang ở' ? 'bg-primary' : 'bg-success'}">${p.trangThai}</span></td>
+            </tr>`;
+        });
+    }
+
+    function renderCustomers(khs) {
+        const body = document.getElementById('customerTableBody');
+        body.innerHTML = '';
+        khs.forEach(k => {
+            body.innerHTML += `<tr>
+                <td>KH#${k.maKhachHang}</td>
+                <td class="fw-bold">${k.hoTen}</td>
+                <td>${k.soCCCD}</td>
+                <td>${k.soDienThoai}</td>
+                <td>${k.email}</td>
+            </tr>`;
+        });
+    }
+
+    function renderServices(dvs) {
+        const body = document.getElementById('serviceTableBody');
+        body.innerHTML = '';
+        dvs.forEach(d => {
+            body.innerHTML += `<tr>
+                <td>DV#${d.maDichVu}</td>
+                <td class="fw-bold">${d.tenDichVu}</td>
+                <td>${Number(d.donGia).toLocaleString('vi-VN')} VNĐ</td>
+            </tr>`;
+        });
+    }
+
+    function openNewBookingModal() {
+        const khSelect = document.getElementById('bookKhachHang');
+        const pSelect = document.getElementById('bookPhong');
+        khSelect.innerHTML = globalData.khachHangs.map(k => `<option value="${k.maKhachHang}">${k.hoTen} (${k.soCCCD})</option>`).join('');
+        pSelect.innerHTML = globalData.phongs.map(p => `<option value="${p.maPhong}">Phòng ${p.soPhong}</option>`).join('');
+
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('bookNgayNhan').value = today;
+        const tomorrow = new Date(Date.now() + 86400000).toISOString().split('T')[0];
+        document.getElementById('bookNgayTra').value = tomorrow;
+
+        new bootstrap.Modal(document.getElementById('bookingModal')).show();
+    }
+
+    function openAddRoomModal() {
+        const lpSelect = document.getElementById('newMaLoaiPhong');
+        lpSelect.innerHTML = globalData.loaiPhongs.map(l => `<option value="${l.maLoaiPhong}">${l.tenLoaiPhong}</option>`).join('');
+        new bootstrap.Modal(document.getElementById('addRoomModal')).show();
+    }
+
+    function openAddCustomerModal() {
+        new bootstrap.Modal(document.getElementById('addCustomerModal')).show();
+    }
+
+    function openAddServiceModal() {
+        new bootstrap.Modal(document.getElementById('addServiceModal')).show();
+    }
+
+    async function submitNewBooking() {
+        const data = {
+            maKhachHang: parseInt(document.getElementById('bookKhachHang').value),
+            maPhong: parseInt(document.getElementById('bookPhong').value),
+            ngayNhanDuKien: document.getElementById('bookNgayNhan').value,
+            ngayTraDuKien: document.getElementById('bookNgayTra').value
+        };
+
+        try {
+            const res = await fetch('/Booking/DatPhongMoi', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert(result.message);
+                bootstrap.Modal.getInstance(document.getElementById('bookingModal')).hide();
+                loadAllData();
+            } else {
+                alert(result.message);
+            }
+        } catch (err) {
+            alert('Lỗi kết nối!');
+        }
+    }
+
+    async function submitAddRoom() {
+        const data = {
+            soPhong: document.getElementById('newSoPhong').value,
+            maLoaiPhong: parseInt(document.getElementById('newMaLoaiPhong').value),
+            trangThai: 'Trống'
+        };
+        try {
+            const res = await fetch('/Booking/ThemPhong', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert(result.message);
+                bootstrap.Modal.getInstance(document.getElementById('addRoomModal')).hide();
+                loadAllData();
+            }
+        } catch { alert('Lỗi!'); }
+    }
+
+    async function submitAddCustomer() {
+        const data = {
+            hoTen: document.getElementById('custHoTen').value,
+            soCCCD: document.getElementById('custCCCD').value,
+            soDienThoai: document.getElementById('custSDT').value,
+            email: document.getElementById('custEmail').value
+        };
+        try {
+            const res = await fetch('/Booking/ThemKhachHang', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert(result.message);
+                bootstrap.Modal.getInstance(document.getElementById('addCustomerModal')).hide();
+                loadAllData();
+            }
+        } catch { alert('Lỗi!'); }
+    }
+
+    async function submitAddService() {
+        const data = {
+            tenDichVu: document.getElementById('servTen').value,
+            donGia: parseFloat(document.getElementById('servDonGia').value)
+        };
+        try {
+            const res = await fetch('/Booking/ThemDichVu', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data)
+            });
+            const result = await res.json();
+            if (res.ok) {
+                alert(result.message);
+                bootstrap.Modal.getInstance(document.getElementById('addServiceModal')).hide();
+                loadAllData();
+            }
+        } catch { alert('Lỗi!'); }
+    }
+
+    async function checkIn(id) {
+        try {
+            const res = await fetch('/Booking/CheckIn/' + id, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                loadAllData();
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            alert('Lỗi kết nối!');
+        }
+    }
+
+    async function checkOut(id) {
+        if (!confirm('Xác nhận Check-out và xuất hóa đơn cho đơn này?')) return;
+        try {
+            const res = await fetch('/Booking/CheckOut/' + id, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                loadAllData();
+                showInvoiceModal(data.hoaDon);
+            } else {
+                alert(data.message || 'Lỗi Check-out');
+            }
+        } catch (err) {
+            alert('Lỗi kết nối!');
+        }
+    }
+
+    async function cancelBooking(id) {
+        if (!confirm('Xác nhận hủy đơn đặt phòng này?')) return;
+        try {
+            const res = await fetch('/Booking/HuyDatPhong/' + id, { method: 'POST' });
+            const data = await res.json();
+            if (res.ok) {
+                loadAllData();
+            } else {
+                alert(data.message);
+            }
+        } catch (err) {
+            alert('Lỗi kết nối!');
+        }
+    }
+
+    function showInvoiceModal(hd) {
+        if (!hd) return;
+        document.getElementById('invMaHD').innerText = 'HD-' + String(hd.maHoaDon).padStart(4, '0');
+        document.getElementById('invKhachHang').innerText = hd.tenKhachHang;
+        document.getElementById('invCCCD').innerText = hd.soCCCD;
+        document.getElementById('invPhong').innerText = 'Phòng ' + hd.soPhong + ' (' + hd.tenLoaiPhong + ')';
+        document.getElementById('invNgayO').innerText = hd.ngayNhan + ' ➔ ' + hd.ngayTra + ' (' + hd.soNgay + ' đêm)';
+        document.getElementById('invDonGia').innerText = Number(hd.donGia).toLocaleString('vi-VN') + ' VNĐ/đêm';
+        document.getElementById('invTienPhong').innerText = Number(hd.tongTienPhong).toLocaleString('vi-VN') + ' VNĐ';
+        document.getElementById('invTienDichVu').innerText = Number(hd.tongTienDichVu).toLocaleString('vi-VN') + ' VNĐ';
+        document.getElementById('invTongThanhToan').innerText = Number(hd.tongThanhToan).toLocaleString('vi-VN') + ' VNĐ';
+        document.getElementById('invNgayLap').innerText = hd.ngayLap;
+
+        new bootstrap.Modal(document.getElementById('invoiceModal')).show();
+    }
+</script>
